@@ -3,274 +3,422 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CJ RESALES | Premium Supply</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <title>Institutional Trading Terminal v4.0</title>
     <style>
-        body { 
-            font-family: 'Plus Jakarta Sans', sans-serif; 
-            background-color: #050505; 
-            color: white; 
-            overflow-x: hidden; 
+        :root {
+            --bg-dark: #0b0e14;
+            --panel-bg: #131722;
+            --panel-border: #2a2e39;
+            --text-main: #d1d4dc;
+            --text-muted: #787b86;
+            --green: #089981;
+            --green-hover: #06705f;
+            --green-alpha: rgba(8, 153, 129, 0.15);
+            --red: #f23645;
+            --red-hover: #b82834;
+            --red-alpha: rgba(242, 54, 69, 0.15);
+            --blue: #2962ff;
+            --yellow: #f5c03b;
         }
-        .glass { 
-            background: rgba(255, 255, 255, 0.03); 
-            backdrop-filter: blur(12px); 
-            border: 1px solid rgba(255, 255, 255, 0.08); 
-        }
-        .product-card:hover .product-image { 
-            transform: scale(1.08); 
-        }
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { 
-            background: #4f46e5; 
-            border-radius: 10px; 
-        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif; user-select: none; }
+        body { background-color: var(--bg-dark); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+
+        /* Top Bar */
+        .top-bar { height: 42px; background: var(--panel-bg); border-bottom: 1px solid var(--panel-border); display: flex; align-items: center; justify-content: space-between; padding: 0 12px; font-size: 12px; }
+        .symbol-info { display: flex; align-items: center; gap: 12px; }
+        .ticker { font-weight: bold; font-size: 14px; color: #fff; display: flex; align-items: center; gap: 6px; }
+        .badge { background: #2a2e39; color: var(--blue); padding: 1px 5px; border-radius: 3px; font-size: 10px; }
+        .price-badge { font-family: 'Courier New', monospace; font-weight: bold; font-size: 14px; }
+
+        .stat-group { display: flex; gap: 14px; }
+        .stat-item { display: flex; flex-direction: column; }
+        .stat-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; }
+        .stat-val { font-size: 11px; font-weight: 600; font-family: monospace; }
+
+        /* Workspace Grid */
+        .workspace { flex: 1; display: grid; grid-template-columns: 44px 1fr 280px 240px; grid-template-rows: 1fr 180px; height: calc(100vh - 42px); }
+
+        /* Toolbar */
+        .toolbar { background: var(--panel-bg); border-right: 1px solid var(--panel-border); display: flex; flex-direction: column; align-items: center; padding-top: 8px; gap: 8px; grid-row: 1 / 3; }
+        .tool-btn { width: 30px; height: 30px; border-radius: 4px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+        .tool-btn:hover, .tool-btn.active { background: #2a2e39; color: var(--text-main); }
+
+        /* Chart Area */
+        .chart-viewport { position: relative; background: var(--bg-dark); grid-column: 2; grid-row: 1; overflow: hidden; }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+        /* Sidebar 1: Orders */
+        .sidebar-order { background: var(--panel-bg); border-left: 1px solid var(--panel-border); grid-column: 3; grid-row: 1 / 3; display: flex; flex-direction: column; }
+        
+        /* Sidebar 2: Order Book & Tape */
+        .sidebar-book { background: var(--panel-bg); border-left: 1px solid var(--panel-border); grid-column: 4; grid-row: 1 / 3; display: flex; flex-direction: column; }
+
+        .tab-header { display: flex; border-bottom: 1px solid var(--panel-border); height: 32px; }
+        .tab-btn { flex: 1; background: transparent; border: none; color: var(--text-muted); font-size: 11px; font-weight: bold; cursor: pointer; }
+        .tab-btn.active { color: var(--blue); border-bottom: 2px solid var(--blue); background: rgba(41, 98, 255, 0.05); }
+
+        .order-form { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+        .form-row { display: flex; flex-direction: column; gap: 3px; }
+        .form-row label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; }
+        .form-row input, .form-row select { background: var(--bg-dark); border: 1px solid var(--panel-border); color: #fff; padding: 6px 8px; border-radius: 4px; font-size: 12px; font-family: monospace; outline: none; }
+        .form-row input:focus { border-color: var(--blue); }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+        .btn-trade { border: none; padding: 10px; border-radius: 4px; font-weight: bold; cursor: pointer; color: white; font-size: 12px; text-transform: uppercase; }
+        .btn-buy { background: var(--green); }
+        .btn-buy:hover { background: var(--green-hover); }
+        .btn-sell { background: var(--red); }
+        .btn-sell:hover { background: var(--red-hover); }
+
+        /* Depth Order Book */
+        .order-book { flex: 1; padding: 8px; display: flex; flex-direction: column; font-family: monospace; font-size: 10px; overflow: hidden; }
+        .ob-header { display: flex; justify-content: space-between; color: var(--text-muted); padding-bottom: 4px; border-bottom: 1px solid var(--panel-border); margin-bottom: 4px; }
+        .ob-row { display: flex; justify-content: space-between; position: relative; height: 15px; align-items: center; padding: 0 2px; }
+        .ob-bar { position: absolute; right: 0; top: 0; bottom: 0; opacity: 0.2; pointer-events: none; }
+        .ob-ask .ob-bar { background: var(--red); }
+        .ob-bid .ob-bar { background: var(--green); }
+
+        /* Time & Sales Tape */
+        .trade-tape { height: 180px; border-top: 1px solid var(--panel-border); padding: 8px; font-family: monospace; font-size: 10px; overflow-y: hidden; display: flex; flex-direction: column; }
+        .tape-row { display: flex; justify-content: space-between; height: 14px; align-items: center; }
+
+        /* Bottom Positions & Orders Panel */
+        .bottom-panel { background: var(--panel-bg); border-top: 1px solid var(--panel-border); grid-column: 2; grid-row: 2; display: flex; flex-direction: column; }
+        .table-container { flex: 1; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: left; }
+        th { background: var(--bg-dark); color: var(--text-muted); padding: 6px 10px; font-weight: normal; position: sticky; top: 0; }
+        td { padding: 6px 10px; border-bottom: 1px solid var(--panel-border); font-family: monospace; }
+        .close-btn { background: #2a2e39; color: var(--text-main); border: none; padding: 2px 6px; border-radius: 3px; cursor: pointer; font-size: 10px; }
+        .close-btn:hover { background: var(--red); color: white; }
+
+        /* Utilities */
+        .text-green { color: var(--green); }
+        .text-red { color: var(--red); }
+        .indicator-toggle { display: flex; gap: 6px; padding: 6px 12px; background: #181c27; border-bottom: 1px solid var(--panel-border); font-size: 10px; }
+        .ind-chip { background: #2a2e39; padding: 2px 6px; border-radius: 3px; cursor: pointer; color: var(--text-muted); }
+        .ind-chip.active { background: var(--blue); color: #fff; }
     </style>
 </head>
 <body>
 
-    <nav class="fixed top-0 w-full z-[100] glass border-b border-white/5">
-        <div class="max-w-7xl mx-auto px-6 py-5 flex justify-between items-center">
-            <div class="flex items-center gap-2">
-                <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center font-black italic">CJ</div>
-                <h1 class="text-xl font-extrabold tracking-tighter uppercase">RESALES</h1>
-            </div>
-            
-            <div class="flex items-center gap-6">
-                <button onclick="showOrders()" 
-                        class="text-xs font-bold uppercase tracking-widest px-4 py-2 hover:bg-white/5 rounded-full transition">
-                    VIEW ORDERS
-                </button>
-                <button onclick="toggleCart()" class="relative p-2 hover:bg-white/5 rounded-full transition">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                    </svg>
-                    <span id="cart-count" class="absolute -top-1 -right-1 bg-indigo-600 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-black">0</span>
-                </button>
-            </div>
+    <!-- Header Bar -->
+    <div class="top-bar">
+        <div class="symbol-info">
+            <div class="ticker">BTC/USD <span class="badge">PERP 100x</span></div>
+            <div class="price-badge text-green" id="headerPrice">0.00</div>
         </div>
-    </nav>
+        <div class="stat-group">
+            <div class="stat-item"><span class="stat-label">24h High</span><span class="stat-val" id="high24h">0.00</span></div>
+            <div class="stat-item"><span class="stat-label">24h Low</span><span class="stat-val" id="low24h">0.00</span></div>
+            <div class="stat-item"><span class="stat-label">24h Vol</span><span class="stat-val" id="vol24h">38,419 BTC</span></div>
+            <div class="stat-item"><span class="stat-label">Wallet Balance</span><span class="stat-val text-green" id="accBalance">$100,000.00</span></div>
+            <div class="stat-item"><span class="stat-label">Equity</span><span class="stat-val" id="accEquity">$100,000.00</span></div>
+            <div class="stat-item"><span class="stat-label">Margin Used</span><span class="stat-val text-red" id="marginUsed">$0.00</span></div>
+        </div>
+    </div>
 
-    <main class="max-w-7xl mx-auto px-6 pt-44 grid grid-cols-1 md:grid-cols-3 gap-12 mb-24">
+    <!-- Main Workspace -->
+    <div class="workspace">
         
-        <!-- 1. Essentials Hoodie -->
-        <div class="product-card group">
-            <div class="relative aspect-[3/4] overflow-hidden rounded-[2.5rem] bg-zinc-900 border border-white/10">
-                <img src="https://i.imgur.com/NXhRJ.jpg" 
-                     alt="Essentials Hoodie"
-                     class="product-image w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-all duration-700">
-                <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent p-8 flex flex-col justify-end opacity-0 group-hover:opacity-100 transition-all">
-                    <button onclick="addToCart('Essentials Hoodie', 35.00, 'Small')" 
-                            class="bg-white text-black font-black py-4 rounded-2xl hover:bg-indigo-600 hover:text-white transition transform translate-y-4 group-hover:translate-y-0 duration-300">
-                        QUICK ADD
-                    </button>
-                </div>
+        <!-- Left Toolbar -->
+        <div class="toolbar">
+            <button class="tool-btn active" title="Crosshair">┼</button>
+            <button class="tool-btn" title="Trend Line" id="toolLine" onclick="setTool('line')">╱</button>
+            <button class="tool-btn" title="Horizontal Support/Resistance" id="toolRay" onclick="setTool('ray')">━</button>
+            <button class="tool-btn" title="Clear Drawings" onclick="clearDrawings()">🗑️</button>
+        </div>
+
+        <!-- Center Chart Section -->
+        <div class="chart-viewport" id="chartContainer">
+            <div class="indicator-toggle">
+                <span class="ind-chip active" id="chipEMA" onclick="toggleIndicator('EMA')">EMA (20)</span>
+                <span class="ind-chip active" id="chipBB" onclick="toggleIndicator('BB')">Bollinger Bands</span>
+                <span class="ind-chip active" id="chipRSI" onclick="toggleIndicator('RSI')">RSI Sub-pane</span>
             </div>
-            <div class="mt-6 flex justify-between items-center px-2">
-                <div>
-                    <h4 class="font-bold uppercase italic tracking-tighter text-xl leading-none">Essentials Hoodie</h4>
-                    <p class="text-indigo-500 text-xs font-bold mt-2 uppercase">Small (Fits Big)</p>
+            <canvas id="mainChart"></canvas>
+        </div>
+
+        <!-- Sidebar 1: Order Execution -->
+        <div class="sidebar-order">
+            <div class="tab-header">
+                <button class="tab-btn active">ORDER ENTRY</button>
+            </div>
+
+            <div class="order-form">
+                <div class="form-row">
+                    <label>Execution Mode</label>
+                    <select id="orderType" onchange="toggleLimitPrice()">
+                        <option value="MARKET">Market Order</option>
+                        <option value="LIMIT">Limit Order</option>
+                    </select>
                 </div>
-                <p class="text-2xl font-black">$35</p>
+
+                <div class="form-row" id="limitPriceRow" style="display: none;">
+                    <label>Limit Price ($)</label>
+                    <input type="number" id="limitPrice" placeholder="0.00">
+                </div>
+
+                <div class="form-row">
+                    <label>Leverage</label>
+                    <select id="leverage">
+                        <option value="1">1x (Spot)</option>
+                        <option value="5">5x</option>
+                        <option value="10" selected>10x</option>
+                        <option value="25">25x</option>
+                        <option value="50">50x</option>
+                        <option value="100">100x</option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <label>Position Size (BTC)</label>
+                    <input type="number" id="orderQty" value="1.0" step="0.1" min="0.01">
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-row">
+                        <label>Take Profit ($)</label>
+                        <input type="number" id="orderTP" placeholder="Target">
+                    </div>
+                    <div class="form-row">
+                        <label>Stop Loss ($)</label>
+                        <input type="number" id="orderSL" placeholder="Stop">
+                    </div>
+                </div>
+
+                <div class="grid-2" style="margin-top: 6px;">
+                    <button class="btn-trade btn-buy" onclick="executeOrder('BUY')">Buy / Long</button>
+                    <button class="btn-trade btn-sell" onclick="executeOrder('SELL')">Sell / Short</button>
+                </div>
             </div>
         </div>
 
-        <!-- 2. RL Chaps Hoodie -->
-        <div class="product-card group">
-            <div class="relative aspect-[3/4] overflow-hidden rounded-[2.5rem] bg-zinc-900 border border-white/10">
-                <img src="https://i.imgur.com/tASNJ.jpg" 
-                     alt="RL Chaps Hoodie"
-                     class="product-image w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-all duration-700">
-                <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent p-8 flex flex-col justify-end opacity-0 group-hover:opacity-100 transition-all">
-                    <button onclick="addToCart('RL Chaps Hoodie', 45.00, 'L')" 
-                            class="bg-white text-black font-black py-4 rounded-2xl hover:bg-indigo-600 hover:text-white transition transform translate-y-4 group-hover:translate-y-0 duration-300">
-                        QUICK ADD
-                    </button>
-                </div>
+        <!-- Sidebar 2: Live L2 Orderbook & Time/Sales -->
+        <div class="sidebar-book">
+            <div class="tab-header">
+                <button class="tab-btn active">L2 DEPTH</button>
             </div>
-            <div class="mt-6 flex justify-between items-center px-2">
-                <div>
-                    <h4 class="font-bold uppercase italic tracking-tighter text-xl leading-none">RL Chaps Hoodie</h4>
-                    <p class="text-zinc-500 text-xs font-bold mt-2 uppercase">Vintage Selection</p>
-                </div>
-                <p class="text-2xl font-black">$45</p>
+            <div class="order-book">
+                <div class="ob-header"><span>Price</span><span>Size</span><span>Total</span></div>
+                <div id="askRows" style="display:flex; flex-direction:column-reverse;"></div>
+                <div style="padding: 3px 0; font-weight:bold; text-align:center; border-top: 1px solid var(--panel-border); border-bottom: 1px solid var(--panel-border)" id="obSpread">-</div>
+                <div id="bidRows"></div>
+            </div>
+
+            <div class="tab-header">
+                <button class="tab-btn active">TIME & SALES</button>
+            </div>
+            <div class="trade-tape" id="tradeTape">
+                <!-- Ticker prints live -->
             </div>
         </div>
 
-        <!-- 3. Travis Scott's Shoes - Updated with your new photo -->
-        <div class="product-card group">
-            <div class="relative aspect-[3/4] overflow-hidden rounded-[2.5rem] bg-zinc-900 border border-white/10">
-                <img src="https://i.imgur.com/xCq9d.jpg" 
-                     alt="Travis Scott's"
-                     class="product-image w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-all duration-700">
-                <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent p-8 flex flex-col justify-end opacity-0 group-hover:opacity-100 transition-all">
-                    <button onclick="addToCart('Travis Scott\'s', 150.00, '8.5')" 
-                            class="bg-white text-black font-black py-4 rounded-2xl hover:bg-indigo-600 hover:text-white transition transform translate-y-4 group-hover:translate-y-0 duration-300">
-                        QUICK ADD
-                    </button>
-                </div>
+        <!-- Bottom Panel: Active Positions & Pending Orders -->
+        <div class="bottom-panel">
+            <div class="tab-header">
+                <button class="tab-btn active" id="tabPos" onclick="switchBottomTab('POS')">POSITIONS (<span id="posCount">0</span>)</button>
+                <button class="tab-btn" id="tabOrders" onclick="switchBottomTab('ORDERS')">PENDING ORDERS (<span id="ordersCount">0</span>)</button>
             </div>
-            <div class="mt-6 flex justify-between items-center px-2">
-                <div>
-                    <h4 class="font-bold uppercase italic tracking-tighter text-xl leading-none">Travis Scott's</h4>
-                    <p class="text-indigo-500 text-xs font-bold mt-2 uppercase">Size 8.5</p>
-                </div>
-                <p class="text-2xl font-black">$150</p>
+            <div class="table-container" id="posTableContainer">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Side</th>
+                            <th>Size</th>
+                            <th>Entry</th>
+                            <th>Mark</th>
+                            <th>Liq. Price</th>
+                            <th>Margin</th>
+                            <th>TP / SL</th>
+                            <th>Unrealized PNL</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="positionsTable"></tbody>
+                </table>
             </div>
-        </div>
-    </main>
-
-    <!-- Cart Sidebar -->
-    <div id="cart-sidebar" class="fixed top-0 right-0 h-full w-full md:w-[450px] glass z-[1000] transform translate-x-full transition-transform duration-500 p-10 flex flex-col border-l border-white/10 shadow-2xl">
-        <div class="flex justify-between items-center mb-10">
-            <h2 class="text-4xl font-black italic uppercase tracking-tighter">Bag</h2>
-            <button onclick="toggleCart()" class="text-zinc-500 hover:text-white text-5xl font-light">&times;</button>
-        </div>
-        <div id="cart-items" class="flex-1 overflow-y-auto space-y-6 custom-scrollbar pr-2"></div>
-        <div class="pt-8 border-t border-white/10 mt-8">
-            <div class="flex justify-between items-end mb-8">
-                <span class="text-zinc-500 font-bold uppercase tracking-widest text-[10px]">Subtotal</span>
-                <span id="cart-total" class="text-4xl font-black italic tracking-tighter text-indigo-500">$0.00</span>
+            <div class="table-container" id="ordersTableContainer" style="display: none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Type</th>
+                            <th>Side</th>
+                            <th>Size</th>
+                            <th>Trigger Price</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ordersTable"></tbody>
+                </table>
             </div>
-            <button onclick="checkout()" 
-                    class="w-full bg-[#00D632] hover:bg-[#00c22d] text-white py-6 rounded-3xl font-black text-xl flex items-center justify-center gap-4 transition-all shadow-lg shadow-green-500/20">
-                PAY VIA CASH APP
-            </button>
         </div>
     </div>
 
-    <!-- Orders Modal -->
-    <div id="orders-modal" class="hidden fixed inset-0 bg-black/80 z-[2000] flex items-center justify-center">
-        <div class="glass w-full max-w-2xl mx-4 rounded-3xl p-8 max-h-[90vh] overflow-hidden flex flex-col">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-3xl font-black italic uppercase tracking-tighter">Recent Orders</h2>
-                <button onclick="hideOrders()" class="text-4xl leading-none text-zinc-400 hover:text-white">&times;</button>
-            </div>
-            <div id="orders-list" class="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4 text-sm"></div>
-            <button onclick="clearOrders()" 
-                    class="mt-6 text-red-400 hover:text-red-500 text-xs font-bold uppercase tracking-widest">
-                Clear All Orders
-            </button>
-        </div>
-    </div>
+<script>
+    // State Engine
+    let balance = 100000.00;
+    let currentPrice = 65000.00;
+    let candles = [];
+    let positions = [];
+    let pendingOrders = [];
+    let drawings = [];
+    let activeTool = null;
+    let drawStart = null;
 
-    <script>
-        const myCashTag = "carterbarrels"; 
-        let cart = [];
-        let orders = JSON.parse(localStorage.getItem('cjresales_orders')) || [];
+    // Technical Indicators State
+    let showEMA = true;
+    let showBB = true;
+    let showRSI = true;
 
-        function toggleCart() {
-            const sidebar = document.getElementById('cart-sidebar');
-            sidebar.classList.toggle('translate-x-full');
+    // Canvas Engine Parameters
+    let candleWidth = 7;
+    let candleGap = 3;
+    let panOffsetX = 0;
+    let mouseX = 0, mouseY = 0;
+    let isHoveringChart = false;
+    let isMouseDown = false;
+
+    // Canvas Element
+    const container = document.getElementById('chartContainer');
+    const canvas = document.getElementById('mainChart');
+    const ctx = canvas.getContext('2d');
+
+    function initCanvas() {
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+    }
+    window.addEventListener('resize', () => { initCanvas(); draw(); });
+    initCanvas();
+
+    // Generate Initial Technical Data
+    function generateInitialHistory() {
+        let price = currentPrice;
+        const now = Date.now();
+        for (let i = 250; i >= 0; i--) {
+            let volatility = (Math.random() - 0.495) * 50;
+            let open = price;
+            let close = open + volatility;
+            let high = Math.max(open, close) + Math.random() * 20;
+            let low = Math.min(open, close) - Math.random() * 20;
+            let volume = Math.floor(Math.random() * 80) + 10;
+
+            candles.push({ time: now - (i * 60000), open, high, low, close, volume });
+            price = close;
         }
+        currentPrice = price;
+    }
 
-        function addToCart(name, price, size) {
-            const existing = cart.find(item => item.name === name && item.size === size);
-            if (existing) existing.qty++;
-            else cart.push({ name, price, size, qty: 1 });
-            updateCartUI();
-            const sidebar = document.getElementById('cart-sidebar');
-            if (sidebar.classList.contains('translate-x-full')) toggleCart();
+    // Indicator Mathematical Calculators
+    function calculateEMA(period) {
+        let k = 2 / (period + 1);
+        let ema = [];
+        let prevEma = candles[0].close;
+        for (let i = 0; i < candles.length; i++) {
+            let val = (candles[i].close * k) + (prevEma * (1 - k));
+            ema.push(val);
+            prevEma = val;
         }
+        return ema;
+    }
 
-        function removeFromCart(name) {
-            cart = cart.filter(item => item.name !== name);
-            updateCartUI();
-        }
-
-        function updateCartUI() {
-            const container = document.getElementById('cart-items');
-            const totalCount = cart.reduce((sum, item) => sum + item.qty, 0);
-            document.getElementById('cart-count').innerText = totalCount;
-            
-            if (cart.length === 0) {
-                container.innerHTML = '<p class="text-zinc-700 font-bold uppercase italic mt-10 text-center">Your bag is empty.</p>';
-                document.getElementById('cart-total').innerText = "$0.00";
-                return;
+    function calculateBB(period, stdDev) {
+        let upper = [], lower = [], middle = [];
+        for (let i = 0; i < candles.length; i++) {
+            if (i < period - 1) {
+                middle.push(null); upper.push(null); lower.push(null);
+                continue;
             }
+            let slice = candles.slice(i - period + 1, i + 1);
+            let mean = slice.reduce((acc, c) => acc + c.close, 0) / period;
+            let variance = slice.reduce((acc, c) => acc + Math.pow(c.close - mean, 2), 0) / period;
+            let sd = Math.sqrt(variance);
 
-            let total = 0;
-            container.innerHTML = cart.map((item) => {
-                total += (item.price * item.qty);
-                return `
-                    <div class="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/5">
-                        <div>
-                            <h4 class="font-black uppercase italic tracking-tighter text-lg leading-tight">${item.name}</h4>
-                            <p class="text-indigo-400 font-bold text-[10px] mt-1 uppercase">SIZE ${item.size} — x${item.qty}</p>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-xl font-black tracking-tighter">$${(item.price * item.qty).toFixed(2)}</p>
-                            <button onclick="removeFromCart('${item.name}')" class="text-red-500 text-[10px] font-black uppercase mt-1">Remove</button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-            document.getElementById('cart-total').innerText = `$${total.toFixed(2)}`;
+            middle.push(mean);
+            upper.push(mean + (sd * stdDev));
+            lower.push(mean - (sd * stdDev));
         }
+        return { upper, lower, middle };
+    }
 
-        function checkout() {
-            if (cart.length === 0) return;
-            
-            const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-            const summary = cart.map(i => `${i.qty}x ${i.name} (${i.size})`).join(', ');
-            
-            const order = {
-                id: Date.now(),
-                date: new Date().toLocaleString(),
-                total: total.toFixed(2),
-                summary: summary
-            };
-            
-            orders.unshift(order);
-            localStorage.setItem('cjresales_orders', JSON.stringify(orders));
-            
-            const note = encodeURIComponent(`CJ Resales Order: ${summary}`);
-            window.location.href = `https://cash.app/$${myCashTag}/${total.toFixed(2)}?note=${note}`;
-            
-            setTimeout(() => {
-                cart = [];
-                updateCartUI();
-            }, 500);
+    function calculateRSI(period) {
+        let rsi = [];
+        let gains = 0, losses = 0;
+
+        for (let i = 1; i <= period; i++) {
+            let diff = candles[i].close - candles[i - 1].close;
+            if (diff >= 0) gains += diff; else losses -= diff;
         }
+        let avgGain = gains / period;
+        let avgLoss = losses / period;
+        rsi[period] = 100 - (100 / (1 + (avgGain / (avgLoss || 1))));
 
-        function showOrders() {
-            const modal = document.getElementById('orders-modal');
-            const list = document.getElementById('orders-list');
-            
-            list.innerHTML = orders.length === 0 
-                ? `<p class="text-zinc-500 italic text-center py-10">No orders yet...</p>`
-                : orders.map(order => `
-                    <div class="bg-white/5 p-5 rounded-2xl border border-white/10">
-                        <div class="flex justify-between text-xs text-zinc-400 mb-2">
-                            <span>${order.date}</span>
-                            <span class="font-mono">$${order.total}</span>
-                        </div>
-                        <p class="font-medium">${order.summary}</p>
-                    </div>
-                `).join('');
-            
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
+        for (let i = period + 1; i < candles.length; i++) {
+            let diff = candles[i].close - candles[i - 1].close;
+            let gain = diff >= 0 ? diff : 0;
+            let loss = diff < 0 ? -diff : 0;
+
+            avgGain = ((avgGain * (period - 1)) + gain) / period;
+            avgLoss = ((avgLoss * (period - 1)) + loss) / period;
+
+            let rs = avgGain / (avgLoss || 1);
+            rsi.push(100 - (100 / (1 + rs)));
         }
+        while (rsi.length < candles.length) rsi.unshift(50);
+        return rsi;
+    }
 
-        function hideOrders() {
-            const modal = document.getElementById('orders-modal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-        }
+    // High Frequency Ticker Engine
+    setInterval(() => {
+        let lastCandle = candles[candles.length - 1];
+        let tickDelta = (Math.random() - 0.495) * 8;
+        
+        currentPrice += tickDelta;
+        lastCandle.close = currentPrice;
+        if (currentPrice > lastCandle.high) lastCandle.high = currentPrice;
+        if (currentPrice < lastCandle.low) lastCandle.low = currentPrice;
+        lastCandle.volume += Math.abs(tickDelta) * 0.05;
 
-        function clearOrders() {
-            if (confirm("Clear ALL saved orders?")) {
-                orders = [];
-                localStorage.setItem('cjresales_orders', JSON.stringify(orders));
-                hideOrders();
+        // Print Time & Sales Tape
+        printTape(currentPrice, Math.abs(tickDelta * 0.1).toFixed(2), tickDelta >= 0);
+
+        // Process Pending Limit Orders
+        pendingOrders.forEach((ord, idx) => {
+            if ((ord.side === 'BUY' && currentPrice <= ord.price) || (ord.side === 'SELL' && currentPrice >= ord.price)) {
+                executeOrder(ord.side, ord.qty, ord.price, ord.leverage);
+                pendingOrders.splice(idx, 1);
             }
-        }
-
-        document.getElementById('orders-modal').addEventListener('click', function(e) {
-            if (e.target === this) hideOrders();
         });
-    </script>
-</body>
-</html>
+
+        // Construct New Candle Every 10 Ticks
+        if (Math.random() < 0.1) {
+            candles.push({
+                time: Date.now(),
+                open: currentPrice,
+                high: currentPrice,
+                low: currentPrice,
+                close: currentPrice,
+                volume: 0.1
+            });
+            if (candles.length > 500) candles.shift();
+        }
+
+        updateEngine();
+        draw();
+    }, 150);
+
+    // Business Logic Engine
+    function updateEngine() {
+        document.getElementById('headerPrice').innerText = currentPrice.toFixed(2);
+        
+        let totalUnrealizedPNL = 0;
+        let totalMarginUsed = 0;
+
+        positions.forEach((pos, idx) => {
+            let pnl = pos.type === 'BUY' ? (currentPrice - pos.entry) * pos.size : (pos.entry - currentPrice) * pos.size;
+            pos.pnl = pnl;
+            totalUnrealizedPNL += pnl;
+            totalMarg
